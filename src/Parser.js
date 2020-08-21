@@ -24,13 +24,13 @@ module.exports = class Parser {
    */
   static parse(tokens, options) {
     const parser = new Parser(options);
-    return parser.parse(tokens);
+    return parser.parse(false, tokens);
   }
 
   /**
    * Parse Loop
    */
-  parse(tokens, top = true) {
+  parse(withinInline, tokens, top = true) {
     let out = '',
       i,
       j,
@@ -56,6 +56,18 @@ module.exports = class Parser {
       token = tokens[i];
       switch (token.type) {
         case 'space': {
+          // Journey
+          if (!withinInline) { 
+            const hasRaw = token.raw && token.raw.length > 1;
+            let count = hasRaw ? token.raw.length - 1 : 1;
+            if (i + 1 < l) {
+              let nextToken = tokens[i + 1];
+              count = (['text', 'paragraph'].indexOf(nextToken.type) < 0) ? count - 1 : count;
+            }
+            out += this.renderer.html('<p></p>\n'.repeat(count));
+          } else {
+            out += '\n';
+          }          
           continue;
         }
         case 'hr': {
@@ -110,7 +122,7 @@ module.exports = class Parser {
           continue;
         }
         case 'blockquote': {
-          body = this.parse(token.tokens);
+          body = this.parse(true, token.tokens);
           out += this.renderer.blockquote(body);
           continue;
         }
@@ -146,7 +158,7 @@ module.exports = class Parser {
               }
             }
 
-            itemBody += this.parse(item.tokens, loose);
+            itemBody += this.parse(true, item.tokens, loose);
             body += this.renderer.listitem(itemBody, task, checked);
           }
 
